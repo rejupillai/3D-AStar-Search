@@ -12,7 +12,7 @@ Interactive full-stack pathfinding visualizer comparing **3-Directional A\* Sear
 
 ## 🎬 Los Angeles ($S$) → Dallas ($M$) → Miami ($T$)
 
-> **Auto-Playing 20s Traversal (`Los Angeles, CA` → `Miami, FL` via Intermediate Hub `Dallas, TX`)**:
+> **Traversal (`Los Angeles, CA` → `Miami, FL` via Intermediate Hub `Dallas, TX`)**:
 > Watch **3-Directional A\* Search** simultaneously expand three heuristic-guided wavefronts — **Origin $S$ (`Los Angeles, CA` in Neon Blue)**, **Intermediate Hub $M$ (`Dallas, TX` in Neon Purple)**, and **Destination $T$ (`Miami, FL` in Neon Green)** — converging in just **41 visited cities (`0.522 ms`)** vs. **277 visited cities (`1.456 ms`)** for Standard Dijkstra (**85.2% fewer cities explored**).
 
 <p align="center">
