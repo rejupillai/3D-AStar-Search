@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US Road Network Pathfinding Visualizer | 3-Directional A* vs. Dijkstra</title>
+  <meta name="description" content="Interactive 336-city US road network pathfinding visualizer comparing 3-Directional A* Search against Standard Single-Source Dijkstra's Algorithm." />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- TOP NAVIGATION & COMPETITION CONTROL BAR -->
+  <header class="top-nav" id="top-nav">
+    <div class="brand-block">
+      <div class="brand-sigil" aria-hidden="true">
+        <span class="dot dot-s"></span>
+        <span class="dot dot-m"></span>
+        <span class="dot dot-t"></span>
+      </div>
+      <div class="brand-titles">
+        <h1 class="app-title">US Road Network Pathfinding Visualizer</h1>
+        <p class="app-subtitle">336 Cities · 50 States · Albers USA Delaunay Graph · 3-Directional A* vs. Dijkstra</p>
+      </div>
+    </div>
+
+    <!-- ROUTE SELECTORS -->
+    <div class="route-controls" role="group" aria-label="Route City Selectors">
+      <div class="control-field">
+        <label for="source-select">Origin (S)</label>
+        <select id="source-select" aria-label="Origin City"></select>
+      </div>
+
+      <div class="control-field">
+        <label for="hub-select">Intermediate Hub (M)</label>
+        <select id="hub-select" aria-label="Intermediate Hub City">
+          <option value="auto">⚡ Auto Dynamic Hub (Centroid Landmark)</option>
+        </select>
+      </div>
+
+      <div class="control-field">
+        <label for="target-select">Destination (T)</label>
+        <select id="target-select" aria-label="Destination City"></select>
+      </div>
+
+      <div class="control-field preset-field">
+        <label for="preset-select">Corridor Presets</label>
+        <select id="preset-select" aria-label="Corridor Preset Routes">
+          <option value="la-ny">Los Angeles, CA → New York, NY</option>
+          <option value="sea-mia">Seattle, WA → Miami, FL</option>
+          <option value="sd-por">San Diego, CA → Portland, ME</option>
+          <option value="sf-bos">San Francisco, CA → Boston, MA</option>
+          <option value="anc-key">Anchorage, AK → Key West, FL</option>
+          <option value="hnl-chi">Honolulu, HI → Chicago, IL</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- PLAYBACK & RACE ACTION CONTROLS -->
+    <div class="playback-controls" role="group" aria-label="Competition and Playback Controls">
+      <button id="start-race-btn" class="btn btn-primary" type="button">
+        <span class="btn-icon">▶</span> Start Race
+      </button>
+      <button id="play-pause-btn" class="btn btn-secondary" type="button" disabled>
+        Pause
+      </button>
+      <button id="step-btn" class="btn btn-secondary" type="button">
+        Step +1
+      </button>
+      <button id="reset-btn" class="btn btn-ghost" type="button">
+        Reset
+      </button>
+
+      <div class="speed-control">
+        <label for="speed-select">Traversal Duration <span id="speed-value">10s</span></label>
+        <div class="speed-controls-row">
+          <select id="speed-select" aria-label="Traversal Duration">
+            <option value="5">5s (Fast)</option>
+            <option value="10" selected>10s (Default)</option>
+            <option value="20">20s (Slow)</option>
+            <option value="30">30s (Slow Replay)</option>
+          </select>
+          <input id="speed-slider" type="range" min="5" max="30" step="5" value="10" title="Traversal Duration (seconds)" />
+        </div>
+      </div>
+
+      <div class="layer-filter" role="group" aria-label="Layer Visibility Mode">
+        <button id="mode-both-btn" class="chip active" type="button" data-mode="both">Layered</button>
+        <button id="mode-tridir-btn" class="chip" type="button" data-mode="tridir">3D A* Only</button>
+        <button id="mode-dijkstra-btn" class="chip" type="button" data-mode="dijkstra">Dijkstra Only</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE SCOREBOARD RIBBON -->
+  <section class="scoreboard-ribbon" id="scoreboard-ribbon" aria-label="Live Competition Scoreboard">
+    <div class="score-card score-dijkstra">
+      <div class="score-header">
+        <span class="algo-badge badge-dijkstra">Standard Dijkstra (1-Way)</span>
+        <span class="algo-status" id="dijkstra-status">Ready</span>
+      </div>
+      <div class="score-metrics">
+        <div class="metric">
+          <span class="metric-label">Nodes Visited</span>
+          <span class="metric-value" id="dijkstra-visited">0 <small>/ 336</small></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Execution Time</span>
+          <span class="metric-value" id="dijkstra-time">0.000 ms</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Final Path Distance</span>
+          <span class="metric-value" id="dijkstra-distance">— mi</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="score-vs-Summary">
+      <div class="vs-pill" id="race-delta-badge">Awaiting Race Start</div>
+      <div class="frame-progress">
+        <span id="frame-counter">Step 0 / 0</span>
+        <div class="progress-track">
+          <div class="progress-fill" id="race-progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="score-card score-tridir">
+      <div class="score-header">
+        <span class="algo-badge badge-tridir">3-Directional A* Search (f = g + h: S · M · T)</span>
+        <span class="algo-status" id="tridir-status">Ready</span>
+      </div>
+      <div class="score-metrics">
+        <div class="metric">
+          <span class="metric-label">Nodes Visited (S | M | T)</span>
+          <span class="metric-value" id="tridir-visited">0 <small id="tridir-subcounts">(0 | 0 | 0)</small></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Execution Time</span>
+          <span class="metric-value" id="tridir-time">0.000 ms</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Final Path Distance</span>
+          <span class="metric-value" id="tridir-distance">— mi</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN WORKSPACE: INTERACTIVE ALBERS USA SVG MAP + LIVE DATA STRUCTURE INSPECTOR -->
+  <main class="workspace-grid">
+    <!-- LEFT/CENTER: INTERACTIVE VECTOR MAP CANVAS -->
+    <section class="canvas-stage" aria-label="Interactive US Road Network Map">
+      <div class="svg-container" id="svg-container">
+        <svg
+          id="us-map-svg"
+          viewBox="0 0 1200 750"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="Albers USA Road Network Graph with 336 Cities"
+        >
+          <defs>
+            <filter id="glow-amber" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="glow-cyan" x="-35%" y="-35%" width="170%" height="170%">
+              <feGaussianBlur stdDeviation="3.0" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="glow-path" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="4.0" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- Background Cartographic Guides & Inset Frames -->
+          <g id="layer-guides">
+            <!-- Alaska Inset Box -->
+            <rect x="48" y="545" width="182" height="168" rx="6" class="inset-box" />
+            <text x="58" y="563" class="inset-label">ALASKA (AK) INSET</text>
+            <!-- Hawaii Inset Box -->
+            <rect x="240" y="600" width="140" height="113" rx="6" class="inset-box" />
+            <text x="250" y="618" class="inset-label">HAWAII (HI) INSET</text>
+          </g>
+
+          <!-- Base Road Network Edges -->
+          <g id="layer-base-edges"></g>
+
+          <!-- Dijkstra Expanded Tree & Pulsing Frontier -->
+          <g id="layer-dijkstra-edges"></g>
+
+          <!-- Tri-Directional 3-Way Frontiers (S: Neon Blue, M: Neon Purple, T: Neon Green) -->
+          <g id="layer-tridir-edges"></g>
+
+          <!-- Final Shortest Path Lines -->
+          <g id="layer-final-paths"></g>
+
+          <!-- 336 City Nodes -->
+          <g id="layer-nodes"></g>
+
+          <!-- Major City & Landmark Pin Labels -->
+          <g id="layer-labels"></g>
+        </svg>
+
+        <!-- Floating Legend Overlay -->
+        <div class="map-legend" id="map-legend">
+          <div class="legend-title">Frontier Telemetry Legend</div>
+          <div class="legend-item">
+            <span class="swatch swatch-dijkstra"></span>
+            <span>Dijkstra Wavefront (Amber Pulse)</span>
+          </div>
+          <div class="legend-item">
+            <span class="swatch swatch-s"></span>
+            <span>3D A* Origin S (Neon Blue)</span>
+          </div>
+          <div class="legend-item">
+            <span class="swatch swatch-m"></span>
+            <span>3D A* Hub M (Neon Purple)</span>
+          </div>
+          <div class="legend-item">
+            <span class="swatch swatch-t"></span>
+            <span>3D A* Target T (Neon Green)</span>
+          </div>
+          <div class="legend-item">
+            <span class="swatch swatch-final-tridir"></span>
+            <span>3D A* Final Shortest Path</span>
+          </div>
+          <div class="legend-item">
+            <span class="swatch swatch-final-dijkstra"></span>
+            <span>Dijkstra Optimal Path (Dashed Gold)</span>
+          </div>
+        </div>
+
+        <!-- Hover Tooltip -->
+        <div id="map-tooltip" class="map-tooltip hidden" role="tooltip"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT: LIVE DATA STRUCTURE INSPECTOR PANEL -->
+    <aside class="inspector-panel" id="inspector-panel" aria-label="Live Data Structure Inspector">
+      <div class="inspector-header">
+        <h2>Live Data Structure Inspector</h2>
+        <span class="inspector-tag" id="inspector-step-badge">IDLE</span>
+      </div>
+
+      <!-- DIJKSTRA DATA STRUCTURE STATE -->
+      <div class="ds-section ds-dijkstra">
+        <div class="ds-section-title">
+          <span class="dot dot-dijkstra"></span>
+          <h3>Single-Source Dijkstra (heapq)</h3>
+        </div>
+
+        <div class="ds-kv-grid">
+          <div class="ds-stat">
+            <span class="ds-stat-label">PQ Length (len(pq))</span>
+            <span class="ds-stat-val" id="insp-d-pq-len">0</span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Heap Pushes / Pops</span>
+            <span class="ds-stat-val" id="insp-d-pushes-pops">0 / 0</span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Closed Set (visited)</span>
+            <span class="ds-stat-val" id="insp-d-visited">0</span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Current Popped Node</span>
+            <span class="ds-stat-val" id="insp-d-curr-node">—</span>
+          </div>
+        </div>
+
+        <div class="ds-subbox">
+          <div class="ds-subbox-header">Min-Heap Priority Queue Head (pq[:4])</div>
+          <div class="heap-pills" id="insp-d-pq-preview">
+            <span class="empty-note">Queue empty — press Start Race</span>
+          </div>
+        </div>
+
+        <div class="ds-subbox">
+          <div class="ds-subbox-header">Recent Edge Relaxations (dist[v] updates)</div>
+          <ul class="relax-log" id="insp-d-relax-log">
+            <li class="empty-note">No relaxations yet</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- TRI-DIRECTIONAL A* DATA STRUCTURE STATE -->
+      <div class="ds-section ds-tridir">
+        <div class="ds-section-title">
+          <span class="dot dot-s"></span>
+          <h3>3-Directional A* (f = g + h: pq_S, pq_M, pq_T)</h3>
+        </div>
+
+        <div class="ds-kv-grid">
+          <div class="ds-stat">
+            <span class="ds-stat-label">3-Queue Total Length</span>
+            <span class="ds-stat-val" id="insp-t-pq-len">0 <small id="insp-t-pq-split">(0|0|0)</small></span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Heap Pushes / Pops</span>
+            <span class="ds-stat-val" id="insp-t-pushes-pops">0 / 0</span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Active Hub Landmark M</span>
+            <span class="ds-stat-val" id="insp-t-hub-name">—</span>
+          </div>
+          <div class="ds-stat">
+            <span class="ds-stat-label">Current Popped Node</span>
+            <span class="ds-stat-val" id="insp-t-curr-node">—</span>
+          </div>
+        </div>
+
+        <div class="ds-subbox">
+          <div class="ds-subbox-header">3-Frontier A* Queue Heads (f = g + h)</div>
+          <div class="heap-pills" id="insp-t-pq-preview">
+            <span class="empty-note">Queues empty — press Start Race</span>
+          </div>
+        </div>
+
+        <div class="ds-subbox">
+          <div class="ds-subbox-header">Recent 3-Way A* Relaxations (g + h = f)</div>
+          <ul class="relax-log" id="insp-t-relax-log">
+            <li class="empty-note">No relaxations yet</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- GRAPH METADATA FOOTER -->
+      <div class="inspector-footer" id="graph-meta-footer">
+        <span>336 US Cities (50 States)</span>
+        <span id="meta-edge-count">671 Road Edges</span>
+        <span id="meta-avg-deg">Avg Degree: 3.99</span>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/static/app.js" type="module"></script>
+</body>
+</html>

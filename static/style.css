@@ -1,0 +1,928 @@
+/* ==========================================================================
+   US Road Network Pathfinding Visualizer — Cartographic Telemetry Dark UI
+   ========================================================================== */
+
+:root {
+  --bg-obsidian: #080c14;
+  --bg-panel: #0e1522;
+  --bg-elevated: #141e30;
+  --bg-input: #111a2b;
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.26);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Algorithmic Frontier Palette */
+  --color-dijkstra: #f59e0b;
+  --color-dijkstra-bright: #fbbf24;
+  --color-s: #00f0ff;
+  --color-m: #c084fc;
+  --color-t: #00ff88;
+  --color-final-path: #38bdf8;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   1. Top Navigation & Competition Bar
+   -------------------------------------------------------------------------- */
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 20;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-sigil {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-s {
+  background-color: var(--color-s);
+  box-shadow: 0 0 8px var(--color-s);
+}
+
+.dot-m {
+  background-color: var(--color-m);
+  box-shadow: 0 0 8px var(--color-m);
+}
+
+.dot-t {
+  background-color: var(--color-t);
+  box-shadow: 0 0 8px var(--color-t);
+}
+
+.dot-dijkstra {
+  background-color: var(--color-dijkstra);
+  box-shadow: 0 0 8px var(--color-dijkstra);
+}
+
+.app-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.app-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.route-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.control-field label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.control-field select {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  min-width: 155px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.control-field select:hover,
+.control-field select:focus {
+  border-color: var(--color-s);
+  outline: none;
+}
+
+.playback-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.35);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0369a1;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #1e293b;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.speed-control {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.speed-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.speed-control select {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.speed-control label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+}
+
+.speed-control input[type="range"] {
+  width: 78px;
+  accent-color: var(--color-s);
+  cursor: pointer;
+}
+
+.layer-filter {
+  display: inline-flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.chip {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.chip.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   2. Live Scoreboard Ribbon
+   -------------------------------------------------------------------------- */
+.scoreboard-ribbon {
+  display: grid;
+  grid-template-columns: 1fr 270px 1fr;
+  gap: 12px;
+  padding: 8px 18px;
+  background-color: #0b111d;
+  border-bottom: 1px solid var(--border-subtle);
+  align-items: center;
+}
+
+.score-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 14px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.algo-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.badge-dijkstra {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--color-dijkstra-bright);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.badge-tridir {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--color-s);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+}
+
+.algo-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.score-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.metric-value small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.score-vs-Summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.vs-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--color-t);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  text-align: center;
+}
+
+.frame-progress {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.progress-track {
+  width: 100%;
+  height: 5px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-s), var(--color-t));
+  transition: width 0.08s linear;
+}
+
+/* --------------------------------------------------------------------------
+   3. Main Workspace Grid (Interactive SVG Canvas + Inspector Side Panel)
+   -------------------------------------------------------------------------- */
+.workspace-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  min-height: 0;
+}
+
+.canvas-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: radial-gradient(circle at 50% 45%, #0f192c 0%, #080c14 82%);
+  overflow: hidden;
+}
+
+.svg-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#us-map-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+  max-height: 750px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: rgba(11, 17, 29, 0.78);
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.55);
+}
+
+/* SVG Elements & Traversal Animations */
+.inset-box {
+  fill: rgba(15, 23, 42, 0.55);
+  stroke: rgba(148, 163, 184, 0.24);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.inset-label {
+  fill: #64748b;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.base-edge {
+  stroke: rgba(148, 163, 184, 0.16);
+  stroke-width: 1.05;
+  fill: none;
+}
+
+.base-edge.inset-link {
+  stroke: rgba(148, 163, 184, 0.12);
+  stroke-dasharray: 3 4;
+}
+
+/* Dijkstra Amber/Yellow Pulsing Traversal */
+.edge-dijkstra-tree {
+  stroke: rgba(245, 158, 11, 0.58);
+  stroke-width: 2.0;
+  fill: none;
+}
+
+.edge-dijkstra-active {
+  stroke: #fbbf24;
+  stroke-width: 3.4;
+  fill: none;
+  filter: url(#glow-amber);
+  animation: pulse-amber 0.7s infinite alternate;
+}
+
+/* Tri-Directional 3-Way Pulsing Frontiers */
+.edge-tridir-S {
+  stroke: var(--color-s);
+  stroke-width: 2.4;
+  fill: none;
+  opacity: 0.88;
+}
+
+.edge-tridir-M {
+  stroke: var(--color-m);
+  stroke-width: 2.4;
+  fill: none;
+  opacity: 0.88;
+}
+
+.edge-tridir-T {
+  stroke: var(--color-t);
+  stroke-width: 2.4;
+  fill: none;
+  opacity: 0.88;
+}
+
+.edge-tridir-active-S,
+.edge-tridir-active-M,
+.edge-tridir-active-T {
+  stroke-width: 3.8;
+  filter: url(#glow-cyan);
+  animation: blink-frontier 0.55s infinite alternate;
+}
+
+.edge-tridir-active-S {
+  stroke: #7dd3fc;
+}
+.edge-tridir-active-M {
+  stroke: #e879f9;
+}
+.edge-tridir-active-T {
+  stroke: #6ee7b7;
+}
+
+/* Final Shortest Path Lines */
+.final-path-tridir {
+  stroke: #ffffff;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  filter: url(#glow-path);
+}
+
+.final-path-tridir-core {
+  stroke: var(--color-s);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.final-path-dijkstra {
+  stroke: var(--color-dijkstra-bright);
+  stroke-width: 3.2;
+  stroke-dasharray: 7 4;
+  stroke-linecap: round;
+  fill: none;
+  filter: url(#glow-amber);
+}
+
+/* City Nodes */
+.city-node {
+  fill: #475569;
+  stroke: #0f172a;
+  stroke-width: 1;
+  cursor: pointer;
+  transition: r 0.15s ease, fill 0.15s ease;
+}
+
+.city-node:hover {
+  r: 6.5;
+  fill: #f8fafc;
+}
+
+.city-node.visited-dijkstra {
+  fill: var(--color-dijkstra);
+}
+
+.city-node.visited-S {
+  fill: var(--color-s);
+}
+
+.city-node.visited-M {
+  fill: var(--color-m);
+}
+
+.city-node.visited-T {
+  fill: var(--color-t);
+}
+
+.city-node.pin-source {
+  fill: var(--color-s);
+  stroke: #ffffff;
+  stroke-width: 2.2;
+}
+
+.city-node.pin-hub {
+  fill: var(--color-m);
+  stroke: #ffffff;
+  stroke-width: 2.2;
+}
+
+.city-node.pin-target {
+  fill: var(--color-t);
+  stroke: #ffffff;
+  stroke-width: 2.2;
+}
+
+.pin-label {
+  fill: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #080c14;
+  stroke-width: 3.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+@keyframes pulse-amber {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes blink-frontier {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Floating Legend */
+.map-legend {
+  position: absolute;
+  bottom: 22px;
+  right: 24px;
+  background: rgba(14, 21, 34, 0.92);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 10px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  backdrop-filter: blur(8px);
+}
+
+.legend-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.swatch {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.swatch-dijkstra {
+  background: var(--color-dijkstra-bright);
+  box-shadow: 0 0 6px var(--color-dijkstra);
+}
+
+.swatch-s {
+  background: var(--color-s);
+  box-shadow: 0 0 6px var(--color-s);
+}
+
+.swatch-m {
+  background: var(--color-m);
+  box-shadow: 0 0 6px var(--color-m);
+}
+
+.swatch-t {
+  background: var(--color-t);
+  box-shadow: 0 0 6px var(--color-t);
+}
+
+.swatch-final-tridir {
+  background: #ffffff;
+  border: 1px solid var(--color-s);
+}
+
+.swatch-final-dijkstra {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-dijkstra-bright),
+    var(--color-dijkstra-bright) 4px,
+    transparent 4px,
+    transparent 7px
+  );
+}
+
+.map-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  z-index: 30;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.map-tooltip.hidden {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   4. Live Data Structure Inspector Side Panel
+   -------------------------------------------------------------------------- */
+.inspector-panel {
+  background-color: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inspector-header h2 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inspector-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--color-s);
+  border: 1px solid var(--border-strong);
+}
+
+.ds-section {
+  background: var(--bg-obsidian);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds-section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ds-section-title h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ds-kv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.ds-stat {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ds-stat-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.ds-stat-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-subbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ds-subbox-header {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.heap-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.heap-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+
+.heap-pill.f-S {
+  border-color: rgba(0, 240, 255, 0.45);
+  color: var(--color-s);
+}
+.heap-pill.f-M {
+  border-color: rgba(192, 132, 252, 0.45);
+  color: var(--color-m);
+}
+.heap-pill.f-T {
+  border-color: rgba(0, 255, 136, 0.45);
+  color: var(--color-t);
+}
+
+.relax-log {
+  list-style: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 8px;
+  max-height: 92px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.relax-log li {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-note {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 10.5px;
+}
+
+.inspector-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1120px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .scoreboard-ribbon {
+    grid-template-columns: 1fr;
+  }
+}
