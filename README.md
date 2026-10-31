@@ -1,4 +1,4 @@
-# US Road Network Pathfinding Visualizer: 3-Directional A* vs. Dijkstra
+# US Road Network Pathfinding : 3-Directional A* vs. Dijkstra
 
 [![Live Demo on Google Cloud Run](https://img.shields.io/badge/Cloud_Run-Live_Visualizer-0284c7?style=for-the-badge&logo=google-cloud)](https://us-road-pathfinding-visualizer-296730842549.us-central1.run.app)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
