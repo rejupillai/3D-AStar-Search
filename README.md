@@ -6,7 +6,7 @@
 
 Interactive full-stack pathfinding visualizer comparing **3-Directional A\* Search ($f = g + h$)** against **Standard Single-Source Dijkstra's Algorithm** across a **336-city US road network graph** spanning all 50 states.
 
-🔗 **Live link **: [https://us-road-pathfinding-visualizer-296730842549.us-central1.run.app](https://us-road-pathfinding-visualizer-296730842549.us-central1.run.app)
+🔗 **Live link**: [https://us-road-pathfinding-visualizer-296730842549.us-central1.run.app](https://us-road-pathfinding-visualizer-27yc3666da-uc.a.run.app/)
 
 ---
 
